@@ -2,13 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+using Cinemachine;
 
 public class PlayerMovement : NetworkBehaviour
 {
-    #region Parameters
     private Rigidbody2D rig;
+    //public MeshRenderer m_MeshRenderer;
     public SpriteRenderer spriteRenderer;
-    public Sprite[] spritesPlayers;
+    public Sprite[] prueba;
 
     [Header("Movement Parameters")]
     [SerializeField]private int moveSpeed;
@@ -27,32 +28,32 @@ public class PlayerMovement : NetworkBehaviour
 
     private bool isJumping;
 
-    [Header("PowerUps Parameters")]
-    public PowerUpController PUC;
-    #endregion
-    public override void OnNetworkSpawn()
+    public GameObject cam;
+    public GameObject bounds;
+
+    void Start()
+    {
+        if(IsOwner)
+        {
+            Spawn();
+        }
+        
+        
+    }
+    public override void OnNetworkSpawn() //Change the sprite of the player
     {
         base.OnNetworkSpawn();
-        spriteRenderer.sprite = spritesPlayers[OwnerClientId];
+        spriteRenderer.sprite = prueba[OwnerClientId];
+    }
 
-        switch (OwnerClientId)
-        {
-            case 0:
-                transform.position = new Vector3(-16, 0, 0);
-                break;
-            case 1:
-                transform.position = new Vector3(-8, 0, 0);
-                break;
-            case 2:
-                transform.position = new Vector3(8, 0, 0);
-                break;
-            case 3:
-                transform.position = new Vector3(16, 0, 0);
-                break;
-            default:
-                break;
-        }
-
+    // Update is called once per frame
+    private void Spawn() //Spawn on the different positions
+    {
+        //Hacer un array de posiciones, que cada uno salga dependiendo de su ownerClientId en una posicion
+        transform.position = new Vector3(0,0,0);
+        //GameObject.Find("Main Camera").SetActive(false);
+        //cam.transform.parent = null;
+        //cam.GetComponent<CinemachineVirtualCamera>().Follow = this.transform;
         vecGravity = new Vector2(0, -Physics2D.gravity.y);
         rig = GetComponent<Rigidbody2D>();
     }
@@ -67,65 +68,45 @@ public class PlayerMovement : NetworkBehaviour
         }
     }
 
-    #region Movement
     private void Movement()
-    {
-        MovementServerRpc();
-    }
-
-    [ServerRpc]
-    private void MovementServerRpc()
-    {
-        MovementClientRpc();
-    }
-
-    [ClientRpc]
-    private void MovementClientRpc()
     {
         float moveHorizontal = Input.GetAxis("Horizontal");
 
-        if (!PUC.velocityBoost)
+        //if (moveHorizontal < 0) //Looking left
+        //{
+        //    GetComponent<SpriteRenderer>().flipX = true;
+        //    transform.Translate(moveHorizontal * moveSpeed * transform.right * Time.deltaTime, Space.World);
+        //}
+        //if (moveHorizontal > 0) //Looking right
+        //{
+        //    GetComponent<SpriteRenderer>().flipX = false;
+        //    transform.Translate(moveHorizontal * moveSpeed * transform.right * Time.deltaTime, Space.World);
+        //}
+
+
+        if (moveHorizontal < 0) //Looking left
         {
-            if (moveHorizontal < 0) //Looking left
-            {
-                transform.Translate(moveHorizontal * moveSpeed * -transform.right * Time.deltaTime, Space.World);
-                transform.rotation = Quaternion.Euler(0, 180, 0);
-            }
-            if (moveHorizontal > 0) //Looking right
-            {
-                transform.rotation = Quaternion.Euler(0, 0, 0);
-                transform.Translate(moveHorizontal * moveSpeed * transform.right * Time.deltaTime, Space.World);
-            }
+            transform.Translate(moveHorizontal * moveSpeed * -transform.right * Time.deltaTime, Space.World);
+            transform.rotation = Quaternion.Euler(0, 180, 0);
+
+            cam.transform.position = new Vector3(0, 0, 20);
+            cam.transform.rotation = Quaternion.Euler(0, -180, 0);
+
         }
-        else
+        if (moveHorizontal > 0) //Looking right
         {
-            if (moveHorizontal < 0) //Looking left
-            {
-                transform.Translate(moveHorizontal * (moveSpeed + 10) * -transform.right * Time.deltaTime, Space.World);
-                transform.rotation = Quaternion.Euler(0, 180, 0);
-            }
-            if (moveHorizontal > 0) //Looking right
-            {
-                transform.rotation = Quaternion.Euler(0, 0, 0);
-                transform.Translate(moveHorizontal * (moveSpeed + 10) * transform.right * Time.deltaTime, Space.World);
-            }
+            transform.rotation = Quaternion.Euler(0, 0, 0);
+            transform.Translate(moveHorizontal * moveSpeed * transform.right * Time.deltaTime, Space.World);
+            
+            cam.transform.position = new Vector3(0, 0, -20);
+            cam.transform.rotation = Quaternion.Euler(0, 0, 0);
         }
     }
-    #endregion
+
     #region Jump
     private void Jump()
     {
-        JumpServerRpc();
-    }
-    [ServerRpc]
-    private void JumpServerRpc()
-    {
-        JumpClientRpc();
-    }
-    [ClientRpc]
-    private void JumpClientRpc()
-    {
-        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded())
         {
             rig.velocity = new Vector2(rig.velocity.x, jumpForce);
             isJumping = true;
@@ -165,33 +146,10 @@ public class PlayerMovement : NetworkBehaviour
         }
     }
 
-    private bool IsGrounded()
+    private bool isGrounded()
     {
         return Physics2D.OverlapCapsule(groundCheck.position, new Vector2(1.8f, 0.3f), CapsuleDirection2D.Horizontal, 0, groundLayer);
     }
     #endregion
-    #region Die
-    private void Die()
-    {
-        DieServerRpc();
-    }
-    [ServerRpc]
-    private void DieServerRpc()
-    {
-        DieClientRpc();
-    }
-    [ClientRpc]
-    private void DieClientRpc()
-    {
-        Destroy(this.gameObject);
-    }
-    
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if(collision.gameObject.CompareTag("Lava"))
-        {
-            Die();
-        }
-    }
-    #endregion
+
 }

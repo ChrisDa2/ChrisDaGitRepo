@@ -7,11 +7,8 @@ public class PushController : NetworkBehaviour
     [Header("Push Parameters")]
     public bool canPush = true;
     public bool pushing = false;
-    
-    public List<GameObject> players = new List<GameObject>();
 
-    [Header("PowerUps Parameters")]
-    public PowerUpController PUC;
+    public List<GameObject> players = new List<GameObject>();
 
     private void Update()
     {
@@ -22,18 +19,38 @@ public class PushController : NetworkBehaviour
         }
     }
 
-    #region Push
     private void PushingLocal()
     {
         if (Input.GetKeyDown(KeyCode.F) && canPush)
         {
+            Debug.Log("Ieeeee");
+            pushing = true;
+            canPush = false;
+
+            PushClientRpc();
             PushServerRpc();
+            Invoke(nameof(CanPushAgain), 1f);
+            Invoke(nameof(DeactivatePush), 1f);
         }
     }
 
     [ClientRpc]
     private void PushClientRpc()
     {
+        Debug.Log("Entro");
+        pushing = true;
+        canPush = false;
+
+        GoPush();
+        
+        Invoke(nameof(CanPushAgain), 1f);
+        Invoke(nameof(DeactivatePush), 1f);
+    }
+
+    [ServerRpc]
+    private void PushServerRpc()
+    {
+        Debug.Log("Entro");
         pushing = true;
         canPush = false;
 
@@ -43,31 +60,16 @@ public class PushController : NetworkBehaviour
         Invoke(nameof(DeactivatePush), 1f);
     }
 
-    [ServerRpc]
-    private void PushServerRpc()
-    {
-        GoPush();
-
-        PushClientRpc();
-    }
-
     private void GoPush()
     {
+        Debug.Log("GoPush");
         if (pushing)
         {
+            Debug.Log("GoPush1");
             for (int i = 0; i < players.Count; i++)
             {
-                if(!PUC.pushBoost)
-                {
-                    Debug.Log("Sin el boost");
-                    players[i].GetComponent<Rigidbody2D>().AddForce(transform.right * 10, ForceMode2D.Impulse);
-                }
-                else
-                {
-                    Debug.Log("Con el boost");
-                    players[i].GetComponent<Rigidbody2D>().AddForce(transform.right * 20, ForceMode2D.Impulse);
-                }
-                
+                Debug.Log("GoPush2");
+                players[i].GetComponent<Rigidbody2D>().AddForce(transform.right * 10, ForceMode2D.Impulse);
             }
         }
     }
@@ -81,8 +83,7 @@ public class PushController : NetworkBehaviour
     {
         canPush = true;
     }
-    #endregion
-    #region Collisions
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!collision.isTrigger)
@@ -104,5 +105,4 @@ public class PushController : NetworkBehaviour
             }
         }
     }
-    #endregion
 }
